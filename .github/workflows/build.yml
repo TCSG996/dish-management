@@ -2,7 +2,7 @@ name: Build and Package
 
 on:
   push:
-    branches: [ main ]
+    branches: [ test01 ]
   workflow_dispatch:
 
 jobs:
