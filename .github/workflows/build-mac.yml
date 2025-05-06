@@ -22,13 +22,14 @@ jobs:
     - name: Setup Node.js
       uses: actions/setup-node@v3
       with:
-        node-version: '16'
+        node-version: '18'
         cache: 'npm'
         
     - name: Install dependencies
       run: |
         npm init -y
         npm install electron electron-builder --save-dev
+        npm install --package-lock-only
         npm install
         
     - name: Create package.json
