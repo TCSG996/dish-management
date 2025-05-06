@@ -1,13 +1,24 @@
 class Game {
     constructor() {
-        this.currentMode = 'mode1';
+        // 检查必要的依赖是否存在
+        if (typeof mockData === 'undefined') {
+            console.error('mockData is not defined. Please ensure data.js is loaded before script.js');
+            return;
+        }
+
+        // 根据当前页面URL确定模式
+        const isMode1 = window.location.pathname.includes('mode1.html');
+        this.currentMode = isMode1 ? 'mode1' : 'mode2';
+        
         this.cookingOrders = new Map(); // key: orderKey, value: {order, state, timer, timeLeft}
         this.penaltyAmount = 30;
-        this.operationOrderIndex = 0; // 当前上菜索引
-        this.operationOrdersList = [];
+        this.teamAOrderIndex = 0; // A队当前上菜索引
+        this.teamBOrderIndex = 0; // B队当前上菜索引
         this.orderKeySeed = 1; // 用于唯一标识每个上菜实例
         this.sharedOrderIndex = 0; // 当前已上菜的数量
         this.sharedOrders = []; // 共享订单池
+        this.visibleSharedOrders = []; // 可见的共享订单
+        this.sharedOrdersList = []; // 共享订单列表
         
         // Initialize UI elements
         this.initializeUI();
@@ -18,91 +29,109 @@ class Game {
     }
 
     initializeUI() {
-        // Mode selection
-        this.mode1Btn = document.getElementById('mode1');
-        this.mode2Btn = document.getElementById('mode2');
-        this.mode1Content = document.getElementById('mode1-content');
-        this.mode2Content = document.getElementById('mode2-content');
+        try {
+            // Mode selection
+            this.mode1Btn = document.getElementById('mode1');
+            this.mode2Btn = document.getElementById('mode2');
+            this.mode1Content = document.getElementById('mode1-content');
+            this.mode2Content = document.getElementById('mode2-content');
 
-        // Operation area elements (Mode 1)
-        this.operationOrders = document.getElementById('operation-orders');
-        this.operationSuccess = document.getElementById('operation-success');
-        this.operationFail = document.getElementById('operation-fail');
-        this.operationProfit = document.getElementById('operation-profit');
-        this.serveNextBtn = document.getElementById('serve-next-btn');
+            // Operation area elements (Mode 1)
+            this.operationOrders = document.getElementById('operation-orders');
+            this.operationSuccess = document.getElementById('operation-success');
+            this.operationFail = document.getElementById('operation-fail');
+            this.operationProfit = document.getElementById('operation-profit');
+            this.serveNextBtn = document.getElementById('serve-next-btn');
 
-        // Team elements (Mode 2)
-        this.sharedOrders = document.getElementById('shared-orders');
-        this.mode2TeamAOrders = document.getElementById('mode2-team-a-orders');
-        this.mode2TeamBOrders = document.getElementById('mode2-team-b-orders');
-        this.mode2TeamASuccess = document.getElementById('mode2-team-a-success');
-        this.mode2TeamBSuccess = document.getElementById('mode2-team-b-success');
-        this.mode2TeamAFail = document.getElementById('mode2-team-a-fail');
-        this.mode2TeamBFail = document.getElementById('mode2-team-b-fail');
-        this.mode2TeamAProfit = document.getElementById('mode2-team-a-profit');
-        this.mode2TeamBProfit = document.getElementById('mode2-team-b-profit');
-        this.serveNextSharedBtn = document.getElementById('serve-next-shared-btn');
-        this.sharedOrderContainer = document.getElementById('shared-order-container');
+            // Team elements (Mode 2)
+            this.sharedOrders = document.getElementById('shared-orders');
+            this.mode2TeamAOrders = document.getElementById('mode2-team-a-orders');
+            this.mode2TeamBOrders = document.getElementById('mode2-team-b-orders');
+            this.mode2TeamASuccess = document.getElementById('mode2-team-a-success');
+            this.mode2TeamBSuccess = document.getElementById('mode2-team-b-success');
+            this.mode2TeamAFail = document.getElementById('mode2-team-a-fail');
+            this.mode2TeamBFail = document.getElementById('mode2-team-b-fail');
+            this.mode2TeamAProfit = document.getElementById('mode2-team-a-profit');
+            this.mode2TeamBProfit = document.getElementById('mode2-team-b-profit');
+            this.serveNextSharedBtn = document.getElementById('serve-next-shared-btn');
+            this.sharedOrderContainer = document.getElementById('shared-order-container');
+
+            // 初始化数据列表
+            this.operationOrdersList = this.currentMode === 'mode1' ? [] : null;
+            this.sharedOrdersList = this.currentMode === 'mode2' ? [] : null;
+        } catch (error) {
+            console.error('Error initializing UI:', error);
+        }
     }
 
     initializeEventListeners() {
-        // Mode selection
-        this.mode1Btn.addEventListener('click', () => this.switchMode('mode1'));
-        this.mode2Btn.addEventListener('click', () => this.switchMode('mode2'));
+        try {
+            // 添加回车键监听器
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    window.location.href = 'index.html';
+                }
+            });
 
-        // Serve next order in operation mode
-        this.serveNextBtn.addEventListener('click', () => this.serveNextOrder());
+            // 只在模式一下添加事件监听器
+            if (this.currentMode === 'mode1') {
+                if (this.serveNextBtn) {
+                    this.serveNextBtn.addEventListener('click', () => this.serveNextOrder());
+                }
 
-        // 动态事件委托：倒计时选择、成功/失败
-        this.operationOrders.addEventListener('click', (e) => {
-            const li = e.target.closest('li[data-order-key]');
-            if (!li) return;
-            const orderKey = li.getAttribute('data-order-key');
-            const cookingObj = this.cookingOrders.get(orderKey);
-            if (!cookingObj) return;
-            if (e.target.classList.contains('timer-btn')) {
-                const minutes = parseInt(e.target.dataset.minutes);
-                this.startOrderTimer(orderKey, minutes);
+                if (this.operationOrders) {
+                    this.operationOrders.addEventListener('click', (e) => {
+                        const li = e.target.closest('li[data-order-key]');
+                        if (!li) return;
+                        const orderKey = li.getAttribute('data-order-key');
+                        const cookingObj = this.cookingOrders.get(orderKey);
+                        if (!cookingObj) return;
+                        if (e.target.classList.contains('timer-btn')) {
+                            const minutes = parseInt(e.target.dataset.minutes);
+                            this.startOrderTimer(orderKey, minutes);
+                        }
+                        if (e.target.classList.contains('success-btn')) {
+                            this.handleOrderResult(orderKey, true);
+                        }
+                        if (e.target.classList.contains('fail-btn')) {
+                            this.handleOrderResult(orderKey, false);
+                        }
+                    });
+                }
             }
-            if (e.target.classList.contains('success-btn')) {
-                this.handleOrderResult(orderKey, true);
+            // 只在模式二下添加事件监听器
+            else if (this.currentMode === 'mode2') {
+                if (this.serveNextSharedBtn) {
+                    this.serveNextSharedBtn.addEventListener('click', () => this.serveNextSharedOrder());
+                }
             }
-            if (e.target.classList.contains('fail-btn')) {
-                this.handleOrderResult(orderKey, false);
-            }
-        });
-
-        if (this.serveNextSharedBtn) {
-            this.serveNextSharedBtn.addEventListener('click', () => this.serveNextSharedOrder());
+        } catch (error) {
+            console.error('Error initializing event listeners:', error);
         }
-    }
-
-    switchMode(mode) {
-        this.currentMode = mode;
-        this.mode1Btn.classList.toggle('active', mode === 'mode1');
-        this.mode2Btn.classList.toggle('active', mode === 'mode2');
-        this.mode1Content.classList.toggle('hidden', mode !== 'mode1');
-        this.mode2Content.classList.toggle('hidden', mode !== 'mode2');
-        this.loadInitialData();
     }
 
     loadInitialData() {
-        if (this.currentMode === 'mode1') {
-            this.operationOrdersList = [...mockData.teamA, ...mockData.teamB].map(order => ({...order, _served: false}));
-            this.operationOrderIndex = 0;
-            this.cookingOrders.clear();
-            this.renderOperationOrders();
-            this.serveNextBtn.disabled = false;
-        } else {
-            this.sharedOrdersList = [...mockData.sharedOrders];
-            this.sharedOrderIndex = 0;
-            this.visibleSharedOrders = [];
-            this.renderSharedOrdersMulti();
-            this.mode2TeamAOrders.innerHTML = '';
-            this.mode2TeamBOrders.innerHTML = '';
-            if (this.serveNextSharedBtn) this.serveNextSharedBtn.disabled = false;
+        try {
+            if (this.currentMode === 'mode1') {
+                // 重置队伍索引
+                this.teamAOrderIndex = 0;
+                this.teamBOrderIndex = 0;
+                this.cookingOrders.clear();
+                this.renderOperationOrders();
+                if (this.serveNextBtn) this.serveNextBtn.disabled = false;
+            } else {
+                this.sharedOrdersList = [...mockData.sharedOrders];
+                this.sharedOrderIndex = 0;
+                this.visibleSharedOrders = [];
+                this.renderSharedOrdersMulti();
+                if (this.mode2TeamAOrders) this.mode2TeamAOrders.innerHTML = '';
+                if (this.mode2TeamBOrders) this.mode2TeamBOrders.innerHTML = '';
+                if (this.serveNextSharedBtn) this.serveNextSharedBtn.disabled = false;
+            }
+            this.updateProfit();
+        } catch (error) {
+            console.error('Error loading initial data:', error);
         }
-        this.updateProfit();
     }
 
     renderOperationOrders() {
@@ -115,10 +144,13 @@ class Game {
             li.setAttribute('data-order-key', orderKey);
             li.innerHTML = `
                 <div class="order-main-row">
-                  <span class="order-no">#${order.orderNo}</span>
-                  <span class="order-name">${order.name}</span>
-                  <span>${order.price}元</span>
-                  <span class="order-ingredients">${order.ingredients.join(' ')}</span>
+                    <div class="order-header">
+                        <span class="order-team">${order.team === 'A' ? 'A队' : 'B队'}</span>
+                        <span class="order-no">#${order.orderNo}</span>
+                        <span class="order-name">${order.name}</span>
+                        <span class="order-price">${order.price}分</span>
+                    </div>
+                    <span class="order-ingredients">${order.ingredients.join(' ')}</span>
                 </div>
                 <div class="order-action-area">
                     ${this.getOrderActionAreaHtml(orderKey, state, timeLeft)}
@@ -136,12 +168,7 @@ class Game {
     }
 
     getOrderActionAreaHtml(orderKey, state, timeLeft) {
-        if (state === 'select-timer') {
-            return `
-                <button class="timer-btn" data-minutes="3">3分钟</button>
-                <button class="timer-btn" data-minutes="5">5分钟</button>
-            `;
-        } else if (state === 'cooking') {
+        if (state === 'cooking') {
             const min = Math.floor(timeLeft / 60);
             const sec = timeLeft % 60;
             return `
@@ -156,25 +183,65 @@ class Game {
     }
 
     serveNextOrder() {
-        let nextIdx = this.operationOrderIndex;
-        while (nextIdx < this.operationOrdersList.length && this.operationOrdersList[nextIdx]._served) {
-            nextIdx++;
-        }
-        if (nextIdx >= this.operationOrdersList.length) {
-            alert('所有订单已上完！');
+        // 直接调用serveOrderFromTeam方法，传入null表示显示队伍选择按钮
+        this.serveOrderFromTeam(null);
+    }
+
+    serveOrderFromTeam(team) {
+        if (!team) {
+            // 如果team为null，显示队伍选择按钮
+            const serveBtn = document.getElementById('serve-next-btn');
+            if (!serveBtn.nextElementSibling || !serveBtn.nextElementSibling.classList.contains('team-buttons')) {
+                const teamButtons = document.createElement('div');
+                teamButtons.className = 'team-buttons';
+                teamButtons.style.display = 'flex';
+                teamButtons.style.justifyContent = 'center';
+                teamButtons.style.gap = '20px';
+                teamButtons.style.marginTop = '12px';
+                teamButtons.innerHTML = `
+                    <button class="team-select-btn" data-team="A">A队上菜</button>
+                    <button class="team-select-btn" data-team="B">B队上菜</button>
+                `;
+                serveBtn.parentNode.insertBefore(teamButtons, serveBtn.nextSibling);
+
+                // 添加队伍选择按钮的点击事件
+                teamButtons.querySelectorAll('.team-select-btn').forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        const selectedTeam = btn.dataset.team;
+                        this.serveOrderFromTeam(selectedTeam);
+                    });
+                });
+            }
             return;
         }
-        this.operationOrderIndex = nextIdx;
-        const order = this.operationOrdersList[this.operationOrderIndex];
+
+        const teamOrders = team === 'A' ? mockData.teamA : mockData.teamB;
+        const currentIndex = team === 'A' ? this.teamAOrderIndex : this.teamBOrderIndex;
+        
+        if (currentIndex >= teamOrders.length) {
+            alert(`${team}队所有订单已上完！`);
+            return;
+        }
+
+        const order = {...teamOrders[currentIndex], team}; // 添加队伍标识
         order._served = true;
         const orderKey = 'order_' + (this.orderKeySeed++);
         this.cookingOrders.set(orderKey, {
             order,
-            state: 'select-timer',
-            timeLeft: 0,
+            state: 'cooking',
+            timeLeft: 180, // 直接设置为3分钟（180秒）
             timer: null
         });
-        this.operationOrderIndex++;
+
+        // 更新对应队伍的索引
+        if (team === 'A') {
+            this.teamAOrderIndex++;
+        } else {
+            this.teamBOrderIndex++;
+        }
+
+        // 自动开始计时
+        this.startOrderTimer(orderKey, 3);
         this.renderOperationOrders();
     }
 
@@ -214,12 +281,15 @@ class Game {
         }
         li.innerHTML = `
             <div class="order-main-row">
-                <span class="order-no">#${order.orderNo}</span>
-                <span class="order-name">${order.name}</span>
-                <span>${order.price}元</span>
+                <div class="order-header">
+                    <span class="order-team">${order.team === 'A' ? 'A队' : 'B队'}</span>
+                    <span class="order-no">#${order.orderNo}</span>
+                    <span class="order-name">${order.name}</span>
+                    <span class="order-price">${order.price}分</span>
+                    ${isTimeout ? '<span class="order-timeout">（超时）</span>' : ''}
+                    ${scoreText}
+                </div>
                 <span class="order-ingredients">${order.ingredients.join(' ')}</span>
-                ${isTimeout ? '<span class="order-timeout">（超时）</span>' : ''}
-                ${scoreText}
             </div>
         `;
         if (isSuccess) {
@@ -250,13 +320,12 @@ class Game {
                             <div class="order-header">
                                 <span class="order-no">#${order.orderNo}</span>
                                 <span class="order-name">${order.name}</span>
-                                <span class="order-price">${order.price}元</span>
+                                <span class="order-price">${order.price}分</span>
                             </div>
                             <span class="order-ingredients">${order.ingredients.join(' ')}</span>
                         </div>
                         <div class="order-action-area">
                             <button class="timer-btn" data-minutes="3" data-idx="${idx}">3分钟</button>
-                            <button class="timer-btn" data-minutes="5" data-idx="${idx}">5分钟</button>
                         </div>
                     `;
                     div.querySelectorAll('.timer-btn').forEach(btn => {
@@ -272,7 +341,7 @@ class Game {
                             <div class="order-header">
                                 <span class="order-no">#${order.orderNo}</span>
                                 <span class="order-name">${order.name}</span>
-                                <span class="order-price">${order.price}元</span>
+                                <span class="order-price">${order.price}分</span>
                             </div>
                             <span class="order-ingredients">${order.ingredients.join(' ')}</span>
                         </div>
@@ -355,9 +424,10 @@ class Game {
         li.innerHTML = `
             <div class="order-main-row">
                 <div class="order-header">
+                    <span class="order-team">${team}队</span>
                     <span class="order-no">#${order.orderNo}</span>
                     <span class="order-name">${order.name}</span>
-                    <span class="order-price">${order.price}元</span>
+                    <span class="order-price">${order.price}分</span>
                 </div>
                 <span class="order-ingredients">${order.ingredients.join(' ')}</span>
             </div>
@@ -406,12 +476,23 @@ class Game {
 
     moveToSuccessPool(order, li, team, status) {
         const pool = team === 'A' ? this.mode2TeamASuccess : this.mode2TeamBSuccess;
+        // 添加积分显示
+        const scoreSpan = document.createElement('span');
+        scoreSpan.className = 'order-score';
+        scoreSpan.textContent = `+${order.price}分`;
+        li.querySelector('.order-header').appendChild(scoreSpan);
         li.remove();
         pool.appendChild(li);
         this.updateProfit();
     }
+
     moveToPenaltyPool(order, li, team, status) {
         const pool = team === 'A' ? this.mode2TeamAFail : this.mode2TeamBFail;
+        // 添加积分显示
+        const scoreSpan = document.createElement('span');
+        scoreSpan.className = 'order-score';
+        scoreSpan.textContent = '-30分';
+        li.querySelector('.order-header').appendChild(scoreSpan);
         li.remove();
         pool.appendChild(li);
         this.updateProfit();
@@ -423,54 +504,53 @@ class Game {
             const successLis = Array.from(this.operationSuccess.children);
             const failLis = Array.from(this.operationFail.children);
             let totalScore = 0;
-            let profit = 0;
+            
+            // 计算成功订单的积分
             successLis.forEach(li => {
                 const match = li.textContent.match(/\+(\d+)分/);
                 if (match) totalScore += parseInt(match[1]);
             });
+            
+            // 计算失败订单的积分（固定扣除30分）
             failLis.forEach(li => {
-                const match = li.textContent.match(/-(\d+)分/);
-                if (match) totalScore -= parseInt(match[1]);
+                totalScore -= 30;
             });
-            profit = totalScore;
-            this.operationProfit.textContent = `${profit}元`;
+            
+            // 更新总积分显示
+            this.operationProfit.textContent = `${totalScore}分`;
             const totalScoreElem = document.getElementById('operation-total-score');
-            if (totalScoreElem) totalScoreElem.textContent = profit;
+            if (totalScoreElem) totalScoreElem.textContent = totalScore;
         } else {
             // Update team profits and scores
             const teamASuccessCount = document.getElementById('mode2-team-a-success').children.length;
             const teamAFailCount = document.getElementById('mode2-team-a-fail').children.length;
             let teamAScore = 0;
-            let teamAProfit = 0;
+            
             // 统计A队积分
             Array.from(document.getElementById('mode2-team-a-success').children).forEach(li => {
-                const match = li.textContent.match(/(\d+)元/);
+                const match = li.textContent.match(/\+(\d+)分/);
                 if (match) teamAScore += parseInt(match[1]);
             });
-            Array.from(document.getElementById('mode2-team-a-fail').children).forEach(li => {
-                const match = li.textContent.match(/(\d+)元/);
-                if (match) teamAScore -= 30;
-            });
-            teamAProfit = (teamASuccessCount * 40) - (teamAFailCount * this.penaltyAmount);
-            document.getElementById('mode2-team-a-profit').textContent = `${teamAProfit}元`;
+            // 失败订单固定扣除30分
+            teamAScore -= (teamAFailCount * 30);
+            
+            document.getElementById('mode2-team-a-profit').textContent = `${teamAScore}分`;
             const teamAScoreElem = document.getElementById('mode2-team-a-score');
             if (teamAScoreElem) teamAScoreElem.textContent = teamAScore;
 
             const teamBSuccessCount = document.getElementById('mode2-team-b-success').children.length;
             const teamBFailCount = document.getElementById('mode2-team-b-fail').children.length;
             let teamBScore = 0;
-            let teamBProfit = 0;
+            
             // 统计B队积分
             Array.from(document.getElementById('mode2-team-b-success').children).forEach(li => {
-                const match = li.textContent.match(/(\d+)元/);
+                const match = li.textContent.match(/\+(\d+)分/);
                 if (match) teamBScore += parseInt(match[1]);
             });
-            Array.from(document.getElementById('mode2-team-b-fail').children).forEach(li => {
-                const match = li.textContent.match(/(\d+)元/);
-                if (match) teamBScore -= 30;
-            });
-            teamBProfit = (teamBSuccessCount * 40) - (teamBFailCount * this.penaltyAmount);
-            document.getElementById('mode2-team-b-profit').textContent = `${teamBProfit}元`;
+            // 失败订单固定扣除30分
+            teamBScore -= (teamBFailCount * 30);
+            
+            document.getElementById('mode2-team-b-profit').textContent = `${teamBScore}分`;
             const teamBScoreElem = document.getElementById('mode2-team-b-score');
             if (teamBScoreElem) teamBScoreElem.textContent = teamBScore;
         }

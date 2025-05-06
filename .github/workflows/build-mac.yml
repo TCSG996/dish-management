@@ -1,0 +1,87 @@
+name: Build Mac App
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: macos-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v2
+      with:
+        node-version: '16'
+        
+    - name: Install dependencies
+      run: |
+        npm init -y
+        npm install electron electron-builder --save-dev
+        npm install
+        
+    - name: Create package.json
+      run: |
+        echo '{
+          "name": "dish-management-system",
+          "version": "1.0.0",
+          "description": "Dish Management System",
+          "main": "main.js",
+          "scripts": {
+            "start": "electron .",
+            "build": "electron-builder"
+          },
+          "build": {
+            "appId": "com.dishmanagement.app",
+            "mac": {
+              "category": "public.app-category.business"
+            }
+          }
+        }' > package.json
+        
+    - name: Create main.js
+      run: |
+        echo 'const { app, BrowserWindow } = require("electron");
+        const path = require("path");
+
+        function createWindow() {
+          const win = new BrowserWindow({
+            width: 1200,
+            height: 800,
+            webPreferences: {
+              nodeIntegration: true,
+              contextIsolation: false
+            }
+          });
+
+          win.loadFile("index.html");
+        }
+
+        app.whenReady().then(() => {
+          createWindow();
+
+          app.on("activate", () => {
+            if (BrowserWindow.getAllWindows().length === 0) {
+              createWindow();
+            }
+          });
+        });
+
+        app.on("window-all-closed", () => {
+          if (process.platform !== "darwin") {
+            app.quit();
+          }
+        });' > main.js
+        
+    - name: Build Mac App
+      run: npm run build
+      
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v2
+      with:
+        name: mac-app
+        path: dist/ 

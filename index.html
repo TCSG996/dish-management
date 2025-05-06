@@ -1,142 +1,75 @@
 <!DOCTYPE html>
-<html lang="zh">
+<html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>菜品管理系统</title>
+    <title>友尽厨房菜品管理系统</title>
     <link rel="stylesheet" type="text/css" href="styles.css">
+    <style>
+        .main-container {
+            max-width: 1200px;
+            margin: 100px auto;
+            padding: 0 20px;
+            text-align: center;
+        }
+        .mode-title {
+            font-size: 2.8em;
+            font-weight: 900;
+            color: #e74c3c;
+            letter-spacing: 4px;
+            margin-bottom: 60px;
+            text-shadow: 0 4px 18px #fffbe9cc;
+        }
+        .mode-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 40px;
+        }
+        .mode-button {
+            width: 280px;
+            height: 180px;
+            border: 3px solid #e74c3c;
+            border-radius: 24px;
+            background: #faf3e3;
+            color: #e74c3c;
+            font-size: 1.8em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-decoration: none;
+            box-shadow: 0 12px 40px rgba(231,76,60,0.09);
+        }
+        .mode-button:hover {
+            transform: translateY(-5px);
+            background: #e74c3c;
+            color: #fff8dc;
+            box-shadow: 0 15px 50px rgba(231,76,60,0.15);
+        }
+        .mode-description {
+            font-size: 0.5em;
+            margin-top: 12px;
+            opacity: 0.8;
+            font-weight: normal;
+        }
+    </style>
 </head>
 <body>
-    <!-- <div class="main-title">XXXXX标题XXXXX</div> -->
-    <div class="container">
-       
-        <div class="mode-selector">
-            
-            <button id="mode1" class="active">模式一：独立运营</button>
-            <button id="mode2">模式二：抢单模式</button>
-        </div>
-
-        <div class="game-area">
-            <!-- 模式一：独立运营 -->
-            <div id="mode1-content" class="game-mode">
-                <div class="operation-area">
-                    <h2>运营区域</h2>
-                    <div class="operation-main-row">
-                        <div class="order-list">
-                            <h3>订单列表</h3>
-                            <ul id="operation-orders"></ul>
-                            <div id="operation-action-area"></div>
-                            <button id="serve-next-btn">上菜</button>
-                        </div>
-                        <div class="score-penalty-col">
-                            <div class="score-pool">
-                                <h3>积分池</h3>
-                                <ul id="operation-success"></ul>
-                            </div>
-                            <div class="penalty-pool">
-                                <h3>扣分池</h3>
-                                <ul id="operation-fail"></ul>
-                            </div>
-                        </div>
-                    </div>
-                    <div id="current-order-modal" class="order-modal hidden">
-                        <div class="modal-content">
-                            <div id="current-order-detail"></div>
-                            <div id="timer-select-area">
-                                <!-- <button class="timer-btn" data-minutes="3">3分钟</button>
-                                <button class="timer-btn" data-minutes="5">5分钟</button> -->
-                            </div>
-                            <div id="cooking-area" class="hidden">
-                                <span id="order-timer" class="timer"></span>
-                                <button id="success-btn">成功</button>
-                                <button id="fail-btn">失败</button>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="bottom-summary">
-                        <div class="total-profit">
-                            <h3>合计盈利</h3>
-                            <p id="operation-profit">0元</p>
-                        </div>
-                        <div class="total-score">
-                            <h3>总积分</h3>
-                            <p id="operation-total-score">0</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- 模式二：抢单模式 -->
-            <div id="mode2-content" class="game-mode hidden">
-                <div class="teams-container">
-                    <div class="team-a">
-                        <h2>A组</h2>
-                        <div class="order-list">
-                            <h3>订单列表</h3>
-                            <ul id="mode2-team-a-orders"></ul>
-                        </div>
-                        <div class="score-pool">
-                            <h3>积分池</h3>
-                            <ul id="mode2-team-a-success"></ul>
-                        </div>
-                        <div class="penalty-pool">
-                            <h3>扣分池</h3>
-                            <ul id="mode2-team-a-fail"></ul>
-                        </div>
-                        <div class="total-summary-row" style="display: flex; justify-content: center; align-items: flex-end; gap: 32px; margin-top: 18px;">
-                            <div class="total-profit">
-                                <h3>合计盈利</h3>
-                                <p id="mode2-team-a-profit">0元</p>
-                            </div>
-                            <div class="total-score">
-                                <h3>总积分</h3>
-                                <p id="mode2-team-a-score">0</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="order-pool">
-                        <h2>订单池</h2>
-                        <button id="serve-next-shared-btn">上菜</button>
-                        <div id="shared-order-container"></div>
-                    </div>
-
-                    <div class="team-b">
-                        <h2>B组</h2>
-                        <div class="order-list">
-                            <h3>订单列表</h3>
-                            <ul id="mode2-team-b-orders"></ul>
-                        </div>
-                        <div class="score-pool">
-                            <h3>积分池</h3>
-                            <ul id="mode2-team-b-success"></ul>
-                        </div>
-                        <div class="penalty-pool">
-                            <h3>扣分池</h3>
-                            <ul id="mode2-team-b-fail"></ul>
-                        </div>
-                        <div class="total-summary-row" style="display: flex; justify-content: center; align-items: flex-end; gap: 32px; margin-top: 18px;">
-                            <div class="total-profit">
-                                <h3>合计盈利</h3>
-                                <p id="mode2-team-b-profit">0元</p>
-                            </div>
-                            <div class="total-score">
-                                <h3>总积分</h3>
-                                <p id="mode2-team-b-score">0</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="controls">
-            <!-- <button id="start-game">开始游戏</button>
-            <button id="end-game">结束游戏</button> -->
+    <div class="main-container">
+        <h1 class="mode-title">友尽厨房菜品管理系统</h1>
+        <div class="mode-buttons">
+            <a href="mode1.html" class="mode-button">
+                独立运营模式
+                <span class="mode-description">单人操作，按顺序处理订单</span>
+            </a>
+            <a href="mode2.html" class="mode-button">
+                抢单模式
+                <span class="mode-description">双人对抗，抢单比拼</span>
+            </a>
         </div>
     </div>
-
-    <script src="data.js"></script>
-    <script src="script.js"></script>
 </body>
 </html> 

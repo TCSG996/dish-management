@@ -1,0 +1,20 @@
+{
+  "name": "dish-management-system",
+  "version": "1.0.0",
+  "description": "Dish Management System",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder"
+  },
+  "build": {
+    "appId": "com.dishmanagement.app",
+    "mac": {
+      "category": "public.app-category.business"
+    }
+  },
+  "devDependencies": {
+    "electron": "^16.0.0",
+    "electron-builder": "^22.14.0"
+  }
+} 
